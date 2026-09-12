@@ -1,3 +1,4 @@
+set -e
 # Create group
 echo "[INFO] Creating group 'developers'"
 sudo groupadd developers 
@@ -7,9 +8,9 @@ echo "[INFO] Verifying group creation"
 getent group developers
 cut -d: -f1 /etc/group | grep developers
 
-#create user
+#create user with non interactive shell
 echo "[INFO] Creating user 'mordecai'"
-sudo useradd -u 5000 -d /var/www/mordecai -m mordecai 
+sudo useradd -s /bin/bash -d /var/www/mordecai -m mordecai
 
 #verify user creation
 echo "[INFO] Verifying user creation"
@@ -20,8 +21,16 @@ cut -d: -f1 /etc/passwd | grep mordecai
 echo "[INFO] Adding user 'mordecai' to group 'developers'"
 sudo usermod -aG developers mordecai
 
+#give user and group permisions to the directory
+echo "[INFO] Changing ownership of /var/www/mordecai to user 'mordecai' and group 'developers'"
+sudo chown mordecai:developers /var/www/mordecai
+
+#add user to docker group
+echo "[INFO] Adding user 'mordecai' to group 'docker'"
+sudo usermod -aG docker mordecai
+
 #verify user is in group
-echo "[INFO] Verifying user is in group"
+echo "[INFO] Verifying user is in groups"
 groups mordecai
 
 # Make group own the directory
