@@ -1,0 +1,52 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+
+      - name: Save Docker image
+        run: |
+          docker save myapp:${{ github.sha }} | gzip > myapp.tar.gz
+
+      - name: Upload image to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "myapp.tar.gz"
+          target: "/opt/myapp"
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/myapp
+
+            docker load < myapp.tar.gz
+
+            docker stop myapp || true
+            docker rm myapp || true
+
+            docker run -d \
+              --name myapp \
+              -p 5000:5000 \
+              myapp:${{ github.sha }}
+
+            rm myapp.tar.gz
